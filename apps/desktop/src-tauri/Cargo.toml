@@ -1,0 +1,15 @@
+[package]
+name = "kirk"
+version = "0.1.0"
+description = "Kirk, a realtime todo list"
+edition = "2021"
+
+[lib]
+name = "kirk_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }

@@ -5,6 +5,6 @@ dist
 !.env.example
 *.tsbuildinfo
 target
-src-tauri/gen
+**/src-tauri/gen
 .context
 .convex

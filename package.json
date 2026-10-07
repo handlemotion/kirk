@@ -4,9 +4,10 @@
   "type": "module",
   "packageManager": "pnpm@12.4.2",
   "scripts": {
-    "typecheck": "pnpm -r --if-present typecheck",
+    "typecheck": "pnpm -r --if-present typecheck && tsc --noEmit -p convex",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm lint && pnpm test"
   },
   "devDependencies": {
     "@auth/core": "0.41.1",

@@ -1,0 +1,37 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  --accent: #2563eb;
+  --border: color-mix(in srgb, currentColor 25%, transparent);
+}
+body { margin: 0; }
+.center { text-align: center; margin-top: 2rem; }
+.muted { opacity: 0.6; }
+.error { color: #c0392b; margin: 0; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: 0.4; }
+.link { background: none; border: none; color: var(--accent); padding: 0.25rem; }
+.signin { max-width: 22rem; margin: 15vh auto; display: grid; gap: 0.75rem; padding: 0 1rem; }
+.signin input, .add input, .edit {
+  padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: transparent; color: inherit;
+}
+.signin button[type="submit"], .add button {
+  background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 0.6rem 1rem;
+}
+.todos { max-width: 40rem; margin: 0 auto; padding: 0 1rem 2rem; }
+.banner { background: #b45309; color: #fff; padding: 0.6rem; text-align: center; margin: 0 -1rem; }
+.todos header { display: flex; align-items: center; justify-content: space-between; }
+.add { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.add input { flex: 1; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.25rem; border-bottom: 1px solid var(--border); }
+li.dragging { opacity: 0.4; }
+li.over { box-shadow: 0 -2px 0 var(--accent); }
+.title { flex: 1; user-select: none; }
+.edit { flex: 1; }
+.done { text-decoration: line-through; opacity: 0.55; }
+.actions { display: flex; gap: 0.25rem; opacity: 0; }
+li:hover .actions, li:focus-within .actions { opacity: 1; }
+.actions button { background: none; border: none; padding: 0.25rem 0.4rem; color: inherit; }
+.hint { font-size: 0.85rem; margin-top: 1rem; }
