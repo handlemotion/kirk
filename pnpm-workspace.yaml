@@ -2,4 +2,7 @@ packages:
   - apps/*
   - packages/*
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
+overrides:
+  react: 19.2.3
+  react-dom: 19.2.3
