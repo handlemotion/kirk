@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck, lint and test
+        run: pnpm check
+      - name: Bundle the iOS JS
+        working-directory: apps/ios
+        env:
+          EXPO_PUBLIC_CONVEX_URL: https://example.convex.cloud
+          CI: "1"
+        run: npx expo export --platform ios --output-dir "$RUNNER_TEMP/ios-export"
+      - name: Build the desktop UI
+        working-directory: apps/desktop
+        env:
+          VITE_CONVEX_URL: https://example.convex.cloud
+        run: pnpm exec vite build
