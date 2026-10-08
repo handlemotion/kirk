@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Kirk",
+    "slug": "kirk",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "app.kirk.todo",
+      "supportsTablet": false
+    },
+    "plugins": ["expo-secure-store", "expo-status-bar"]
+  }
+}

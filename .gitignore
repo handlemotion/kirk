@@ -1,0 +1,10 @@
+node_modules
+dist
+.expo
+.env*
+!.env.example
+*.tsbuildinfo
+target
+**/src-tauri/gen
+.context
+.convex
