@@ -10,6 +10,7 @@
     "format:check": "oxfmt --check",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "e2e": "pnpm --filter @kirk/e2e e2e",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
   },
   "devDependencies": {

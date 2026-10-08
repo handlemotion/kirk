@@ -12,6 +12,7 @@ v1 is online only. When the connection drops, the apps show a banner and block e
 | `packages/shared/` | Convex hooks, types, optimistic list updates and reorder logic. |
 | `apps/ios/` | Expo (React Native) iOS app. |
 | `apps/desktop/` | Tauri 2 app for macOS and Windows. React and Vite UI. |
+| `apps/e2e/` | Playwright end-to-end tests. Run the desktop UI against a local Convex backend. |
 | `scripts/generate-keys.mjs` | Prints the two keys Convex Auth needs. |
 
 Both apps import `@kirk/shared`. Each app keeps all sign-in code in one file: `src/auth.tsx`.
@@ -103,6 +104,46 @@ This runs typecheck, lint (oxlint), a format check (oxfmt) and tests. Run `pnpm 
 - `desktop`: the desktop `TodoScreen`, with the shared hooks mocked. Runs in jsdom.
 
 The iOS screen has no component tests.
+
+## End-to-end tests
+
+```sh
+pnpm --filter @kirk/e2e exec playwright install chromium   # once; add --with-deps on a bare Linux box
+pnpm e2e
+```
+
+`pnpm e2e` is not part of `pnpm check`. It takes about 10 seconds.
+
+It needs no Convex account and no secrets. One run does this:
+
+1. Starts `convex dev` in anonymous agent mode (`CONVEX_AGENT_MODE=anonymous`). That downloads the open-source backend binary on first use, into `~/.cache/convex`, and runs a fresh local backend. Convex marks this mode as beta.
+2. Sets fresh `JWT_PRIVATE_KEY` and `JWKS` values on it.
+3. Serves `apps/desktop` with Vite, pointed at that backend, on port 5199. Set `E2E_PORT` to change it.
+4. Runs the tests in Chromium, then stops both servers.
+
+The backend state and `.env.local` live in `apps/e2e/.backend`, which is git-ignored. A real `.env.local` elsewhere in the repo is never read or written. The backend binary needs a recent Linux (glibc 2.39 or later, so Ubuntu 24.04 or newer). The runner uses POSIX process groups, so it does not run on Windows. macOS is untested.
+
+The HTML report goes to `apps/e2e/playwright-report`. Traces and failure artifacts go to `apps/e2e/test-results`. Traces are kept for failed tests only. Open one with `pnpm --filter @kirk/e2e exec playwright show-trace <trace.zip>`.
+
+What it covers, against the real Convex client, auth and realtime sync:
+
+- `auth.spec.ts`: sign up, reload and stay signed in, sign out, wrong password error, sign in again.
+- `sync.spec.ts`: add, check, uncheck, rename, move and delete in one tab show in a second tab on the same account, in the same order. The observed latency is logged and added to the report as an annotation. It is never asserted.
+- `isolation.spec.ts`: two accounts do not see each other's todos.
+- `offline.spec.ts`: a tab that loses its connection shows the banner and disables every edit control. It catches up when the connection returns.
+- `concurrent.spec.ts`: two tabs check, rename and add at the same moment. Both end on the same list.
+
+Each test signs up its own account with a unique email, so tests run in parallel and reruns do not collide.
+
+How the offline test cuts the connection: Chromium keeps an open WebSocket after `context.setOffline(true)`. The Convex socket therefore goes through a Playwright WebSocket route that forwards to the real backend. Going offline closes both sides of that route and calls `setOffline` so that retries fail. Going online lets the client reconnect to the real backend.
+
+What it cannot cover. These stay manual tests:
+
+- The Tauri web view (WebView2 and WKWebView). The tests run in Chromium. Manual test D covers the web view.
+- The iOS app, including drag to reorder (manual tests B, C, D and E).
+- Real two-device latency over a real network (manual test A). The tests run both tabs on one machine against a local backend.
+- The hosted Convex deployment and its production auth keys.
+- Native drag and drop on desktop. The tests use the move buttons.
 
 ## Sign-in is provisional
 
