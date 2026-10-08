@@ -6,8 +6,10 @@
   "scripts": {
     "typecheck": "pnpm -r --if-present typecheck && tsc --noEmit -p convex",
     "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "test": "vitest run",
-    "check": "pnpm typecheck && pnpm lint && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
   },
   "devDependencies": {
     "@auth/core": "0.41.1",

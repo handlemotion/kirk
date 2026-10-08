@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [
+    "pnpm-lock.yaml",
+    "**/src-tauri/**",
+    "convex/_generated/**",
+    "**/.expo/**",
+    "**/*.md"
+  ],
+  "printWidth": 80,
+  "sortPackageJson": false
+}
