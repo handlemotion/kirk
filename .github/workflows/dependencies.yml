@@ -25,8 +25,9 @@ permissions:
 
 jobs:
   # Fails a pull request that adds a dependency with a known high severity
-  # advisory, or a license problem. Needs the dependency graph, which public
-  # repos have on.
+  # advisory. It needs the dependency graph (Settings, Advanced Security). The
+  # first step probes for it. When the graph is off, the job warns and skips
+  # the review instead of failing every pull request.
   review:
     name: Dependency review
     if: github.event_name == 'pull_request'
@@ -36,7 +37,19 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+      - name: Check that the dependency graph is on
+        id: graph
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/dependency-graph/sbom" >/dev/null 2>&1; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::The dependency graph is off, so dependency review was skipped. Turn it on in the repository settings."
+          fi
+      - if: steps.graph.outputs.enabled == 'true'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
 
