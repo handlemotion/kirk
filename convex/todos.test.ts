@@ -18,7 +18,6 @@ async function setup() {
   };
 }
 
-
 describe("todos auth", () => {
   it("rejects every function when nobody is signed in", async () => {
     const { t, alice } = await setup();
@@ -74,7 +73,9 @@ describe("todos", () => {
 
   it("rejects empty and long titles", async () => {
     const { alice } = await setup();
-    await expect(alice.mutation(api.todos.add, { title: "  " })).rejects.toThrow();
+    await expect(
+      alice.mutation(api.todos.add, { title: "  " }),
+    ).rejects.toThrow();
     await expect(
       alice.mutation(api.todos.add, { title: "x".repeat(501) }),
     ).rejects.toThrow();
@@ -119,7 +120,9 @@ describe("todos", () => {
     const names = async () =>
       (await alice.query(api.todos.list, {})).map((x) => x.title).join("");
     const orders = async () =>
-      t.run(async (ctx) => (await ctx.db.query("todos").collect()).map((x) => x.order));
+      t.run(async (ctx) =>
+        (await ctx.db.query("todos").collect()).map((x) => x.order),
+      );
 
     const before = await orders();
     await alice.mutation(api.todos.move, { id: d, afterId: a });

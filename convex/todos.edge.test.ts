@@ -33,7 +33,10 @@ describe("todos titles", () => {
   it("accepts 500 characters and counts them after trimming", async () => {
     const { alice } = await setup();
     const id = await alice.mutation(api.todos.add, { title: "x".repeat(500) });
-    await alice.mutation(api.todos.rename, { id, title: ` ${"y".repeat(500)} ` });
+    await alice.mutation(api.todos.rename, {
+      id,
+      title: ` ${"y".repeat(500)} `,
+    });
     expect((await alice.query(api.todos.list, {}))[0].title).toBe(
       "y".repeat(500),
     );

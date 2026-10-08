@@ -96,7 +96,7 @@ For a quick look at the desktop UI in a browser, run `pnpm --filter @kirk/deskto
 pnpm check
 ```
 
-This runs typecheck, lint and tests. Vitest has three projects:
+This runs typecheck, lint (oxlint), a format check (oxfmt) and tests. Run `pnpm format` to fix formatting. Vitest has three projects:
 
 - `convex`: the Convex functions, with `convex-test`.
 - `shared`: the reorder logic, and the hooks in `packages/shared`. The hook tests use a real `ConvexReactClient` on a fake WebSocket (`src/fake-server.ts`), so the optimistic updates run as they do in the apps.

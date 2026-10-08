@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { withAdded, withDone, withMoved, withRemoved, withTitle } from "./optimistic";
+import {
+  withAdded,
+  withDone,
+  withMoved,
+  withRemoved,
+  withTitle,
+} from "./optimistic";
 import {
   afterIdForIndex,
   orderAtEnd,

@@ -27,7 +27,9 @@ const titles = (todos: readonly Todo[] | undefined) =>
 
 // Mounts the same wiring the screens use: the list, plus the actions
 // with a getter for the latest list.
-async function setup(initial: Todo[] | null = [todo(1), todo(2), todo(3), todo(4)]) {
+async function setup(
+  initial: Todo[] | null = [todo(1), todo(2), todo(3), todo(4)],
+) {
   const client = newFakeClient();
   const wrapper = ({ children }: { children: ReactNode }) => (
     <ConvexProvider client={client}>{children}</ConvexProvider>
@@ -93,12 +95,18 @@ describe("useTodoActions", () => {
       void actions.setDone("t1" as TodoId, true);
       void actions.setDone("t2" as TodoId, false);
     });
-    expect(view.result.current.todos!.map((t) => t.done)).toEqual([true, false]);
+    expect(view.result.current.todos!.map((t) => t.done)).toEqual([
+      true,
+      false,
+    ]);
     // The same value again changes nothing.
     await act(async () => {
       void actions.setDone("t1" as TodoId, true);
     });
-    expect(view.result.current.todos!.map((t) => t.done)).toEqual([true, false]);
+    expect(view.result.current.todos!.map((t) => t.done)).toEqual([
+      true,
+      false,
+    ]);
     expect(socket.mutations("todos:setDone").map((m) => m.args)).toEqual([
       [{ id: "t1", done: true }],
       [{ id: "t2", done: false }],
