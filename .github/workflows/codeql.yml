@@ -1,0 +1,43 @@
+name: CodeQL
+
+# Not part of the CI gate. Needs "code scanning default setup" to be off in
+# the repository settings, or the upload is rejected.
+
+on:
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "apps/desktop/src-tauri/icons/**"
+  push:
+    branches: [main, feat/kirk-v1]
+  schedule:
+    - cron: "41 4 * * 2"
+  workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:javascript-typescript

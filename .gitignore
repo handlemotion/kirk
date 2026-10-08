@@ -11,3 +11,4 @@ target
 apps/e2e/.backend
 apps/e2e/playwright-report
 apps/e2e/test-results
+coverage
