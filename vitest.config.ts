@@ -14,8 +14,15 @@ export default defineConfig({
       {
         test: {
           name: "shared",
-          include: ["packages/shared/**/*.test.ts"],
-          environment: "node",
+          include: ["packages/shared/**/*.test.{ts,tsx}"],
+          environment: "jsdom",
+        },
+      },
+      {
+        test: {
+          name: "desktop",
+          include: ["apps/desktop/**/*.test.{ts,tsx}"],
+          environment: "jsdom",
         },
       },
     ],
