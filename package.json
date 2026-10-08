@@ -9,6 +9,7 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
   },
   "devDependencies": {
@@ -16,6 +17,7 @@
     "@convex-dev/auth": "^0.0.96",
     "@edge-runtime/vm": "^5.0.0",
     "@types/node": "^26.6.4",
+    "@vitest/coverage-v8": "^5.0.3",
     "convex": "^1.46.0",
     "convex-test": "^0.0.60",
     "fractional-indexing": "^4.0.0",
