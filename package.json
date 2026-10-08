@@ -14,7 +14,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
   },
   "devDependencies": {
-    "@auth/core": "0.41.1",
+    "@auth/core": "0.41.3",
     "@convex-dev/auth": "^0.0.96",
     "@edge-runtime/vm": "^5.0.0",
     "@types/node": "^26.6.4",
