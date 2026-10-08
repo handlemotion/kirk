@@ -297,3 +297,4 @@ The installers are under `apps/desktop/src-tauri/target/release/bundle/`. Check 
 - No push notifications or background refresh.
 - The desktop app icon is a placeholder. Replace `apps/desktop/src-tauri/icons` with `pnpm --filter @kirk/desktop tauri icon <png>`.
 - `Cargo.lock` is not committed. The first `tauri dev` creates it. Commit it then.
+
