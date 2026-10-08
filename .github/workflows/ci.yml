@@ -105,8 +105,9 @@ jobs:
         run: pnpm exec expo export --platform ios --output-dir "$RUNNER_TEMP/ios-export"
 
   # Does nothing until package.json has an `e2e` script. Then it runs
-  # `pnpm e2e` with no edits. Playwright must resolve from the repo root.
-  # Set the repository variable E2E_BROWSERS to change the browser list.
+  # `pnpm e2e` with no edits. Playwright can live in the root package or in a
+  # workspace package. Set the repository variable E2E_BROWSERS to change the
+  # browser list.
   e2e:
     name: E2E
     needs: changes
@@ -115,24 +116,23 @@ jobs:
     timeout-minutes: 15
     env:
       E2E_BROWSERS: ${{ vars.E2E_BROWSERS || 'chromium' }}
-      # Dummy value. Tests that need a backend set their own.
-      VITE_CONVEX_URL: https://example.convex.cloud
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-      - name: Cache Playwright browsers
+      # The Convex local backend binary lands in ~/.cache/convex/binaries.
+      - name: Cache browsers and backend binary
         uses: actions/cache@v6
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ env.E2E_BROWSERS }}-${{ hashFiles('pnpm-lock.yaml') }}
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/convex/binaries
+          key: e2e-${{ runner.os }}-${{ env.E2E_BROWSERS }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
-            playwright-${{ runner.os }}-${{ env.E2E_BROWSERS }}-
+            e2e-${{ runner.os }}-${{ env.E2E_BROWSERS }}-
       - name: Install browsers
-        run: |
-          read -ra browsers <<< "$E2E_BROWSERS"
-          pnpm exec playwright install --with-deps "${browsers[@]}"
+        run: .github/scripts/playwright-install.sh
       - name: Run E2E tests
         run: pnpm e2e
       - name: Upload report and traces
@@ -145,6 +145,8 @@ jobs:
             test-results/
             e2e/playwright-report/
             e2e/test-results/
+            apps/e2e/playwright-report/
+            apps/e2e/test-results/
           if-no-files-found: ignore
           retention-days: 7
 
