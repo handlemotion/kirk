@@ -116,6 +116,21 @@ Convex Auth is in beta. Check its docs before you upgrade: https://labs.convex.d
 
 There is no password reset or email verification in v1. Those need an email provider.
 
+## Known web view notes
+
+These come from the Tauri docs. None of it has been run in a real Tauri window yet. Manual test D covers it.
+
+- **Token storage.** The desktop app keeps the Convex Auth tokens in `localStorage` (`apps/desktop/src/auth.tsx`). The web view is WebView2 on Windows and WKWebView on macOS. https://v2.tauri.app/reference/webview-versions/
+- **Origin.** The app loads from `tauri://localhost` on macOS and Linux. On Windows it loads from `http://tauri.localhost`. `localStorage` belongs to the origin, so a change of origin loses the signed-in session. https://v2.tauri.app/reference/config/ (see `useHttpsScheme`)
+- **Pin the Windows origin before the first release.** The window option `useHttpsScheme` is `false` by default. Docs: "Changing this value between releases will change the IndexedDB, cookies and localstorage location". Tauri 1 used `https://tauri.localhost`. Tauri 2 resets storage on that move: https://v2.tauri.app/start/migrate/from-tauri-1/. Kirk does not set the option. Choose a value now and never flip it after users sign in. The `https` origin also blocks mixed content, which does not matter here because Convex uses `https` and `wss`.
+- **CSP.** Tauri adds nonces and hashes to local scripts and styles at build time, and only when a policy is set in `tauri.conf.json`. https://v2.tauri.app/security/csp/. Kirk's policy allows `https://*.convex.cloud` and `wss://*.convex.cloud` in `connect-src`. `ipc:` and `http://ipc.localhost` are Tauri's own IPC channels.
+- **Custom Convex domain.** A domain outside `*.convex.cloud` is blocked by `connect-src`. Add both its `https://` and `wss://` forms. The same goes for the Convex HTTP actions host if you add one.
+- **Redirect sign-in.** OAuth and magic links return to the app through a URL. That needs a deep link or a local server inside Tauri. It is not tested. Password sign-in avoids the problem.
+
+## Desktop CI
+
+`.github/workflows/desktop-build.yml` builds the desktop app, unsigned, on macOS, Windows and Linux. It runs on pull requests and pushes that touch `apps/desktop`, `packages/shared` or `convex`. It uses a dummy `VITE_CONVEX_URL`, has no signing steps and does not publish anything.
+
 ## Offline behavior
 
 Both apps read the Convex WebSocket state. When it is closed, the app shows a banner and disables every edit control. Kirk stores nothing offline and has no write queue of its own.
@@ -172,6 +187,20 @@ Run these on iOS, macOS and Windows.
 5. Sign in as a second account. Pass: it sees none of the first account's todos.
 
 The desktop checks matter most. Sign-in inside a Tauri web view has not been tested yet. The password method makes no redirect, so it should be safe. If a redirect-based method replaces it, test that flow on both desktop systems first.
+
+### E. iOS drag to reorder
+
+The gesture has not been run on a device or simulator. This test is the first check.
+
+1. Add five todos. Tap Reorder. A ☰ handle shows on each row, and tap-to-edit is off.
+2. Touch and hold a handle, then drag the row to a new place. Pass: other rows slide out of the way. On release the row stays put.
+3. Pass: a second device shows the new order within 500 ms. The dragged row does not jump back and forth on the first device.
+4. Drag a row to the top, to the bottom, and to its own place. Pass: each ends right. Dropping in place changes nothing.
+5. Add 20 todos. Drag a row to the edge of the screen. Pass: the list scrolls on its own.
+6. Scroll the list with a finger when Reorder is on. Pass: it scrolls and no row lifts.
+7. Turn on airplane mode. Pass: handles are dimmed and a hold on a handle lifts nothing.
+8. Turn on VoiceOver. Focus a handle and open the actions rotor. Pass: Move up and Move down work, and the list matches on the second device.
+9. Tap Done. Pass: handles are gone and tap-to-edit works again.
 
 ## Ship steps
 
@@ -238,6 +267,5 @@ The installers are under `apps/desktop/src-tauri/target/release/bundle/`. Check 
 
 - No offline editing, multiple lists, sharing, tags or due dates.
 - No push notifications or background refresh.
-- The iOS app reorders with up and down buttons. Drag handles are not in v1.
 - The desktop app icon is a placeholder. Replace `apps/desktop/src-tauri/icons` with `pnpm --filter @kirk/desktop tauri icon <png>`.
 - `Cargo.lock` is not committed. The first `tauri dev` creates it. Commit it then.

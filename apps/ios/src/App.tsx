@@ -6,6 +6,7 @@ import {
 } from "convex/react";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AuthProvider, SignInScreen } from "./auth";
 import { TodoScreen } from "./TodoScreen";
@@ -20,24 +21,26 @@ const convex = new ConvexReactClient(url, { unsavedChangesWarning: false });
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider client={convex}>
-        <SafeAreaView style={styles.root}>
-          <AuthLoading>
-            <View style={styles.center}>
-              <ActivityIndicator />
-            </View>
-          </AuthLoading>
-          <Unauthenticated>
-            <SignInScreen />
-          </Unauthenticated>
-          <Authenticated>
-            <TodoScreen />
-          </Authenticated>
-        </SafeAreaView>
-        <StatusBar style="auto" />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <AuthProvider client={convex}>
+          <SafeAreaView style={styles.root}>
+            <AuthLoading>
+              <View style={styles.center}>
+                <ActivityIndicator />
+              </View>
+            </AuthLoading>
+            <Unauthenticated>
+              <SignInScreen />
+            </Unauthenticated>
+            <Authenticated>
+              <TodoScreen />
+            </Authenticated>
+          </SafeAreaView>
+          <StatusBar style="auto" />
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
