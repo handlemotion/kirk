@@ -18,7 +18,7 @@ on:
       - ".github/workflows/desktop-build.yml"
       - ".github/actions/setup/**"
   push:
-    branches: [main, feat/kirk-v1]
+    branches: [main]
     paths:
       - "apps/desktop/**"
       - "packages/shared/**"

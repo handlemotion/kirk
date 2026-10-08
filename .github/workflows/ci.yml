@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, feat/kirk-v1]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:

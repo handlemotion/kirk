@@ -180,7 +180,7 @@ Workflows are in `.github/workflows`. They use no secrets, deploy nothing and si
 
 **Require one check in branch protection: `CI gate`.** It always runs. It passes when every job that ran passed and fails if any failed or was cancelled. Jobs that were skipped by change detection count as passed. Do not require the other names. A skipped job or a path-filtered workflow would leave a required check pending.
 
-`ci.yml` runs on pull requests and on pushes to `main` and `feat/kirk-v1`:
+`ci.yml` runs on pull requests and on pushes to `main`:
 
 | Job | What it checks |
 | --- | --- |

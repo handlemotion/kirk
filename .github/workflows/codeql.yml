@@ -9,7 +9,7 @@ on:
       - "**/*.md"
       - "apps/desktop/src-tauri/icons/**"
   push:
-    branches: [main, feat/kirk-v1]
+    branches: [main]
   schedule:
     - cron: "41 4 * * 2"
   workflow_dispatch:
