@@ -108,7 +108,7 @@ The iOS screen has no component tests.
 
 The repo uses TypeScript 7, the native compiler. `tsc` is a Go binary. The `typescript` package has no compiler API in 7.0, so a tool that imports `typescript` at runtime cannot use it. Nothing in Kirk does. If you add such a tool, such as typescript-eslint, alias a 6.x copy for it. See https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/.
 
-Expo SDK 57 lists TypeScript 6 as its expected version. `apps/ios/package.json` sets `expo.install.exclude` so `expo install --check` and `expo start` do not warn about TypeScript 7.
+Expo SDK 57 lists TypeScript 6 as its expected version. `apps/ios/package.json` sets `expo.install.exclude` so Expo does not flag TypeScript 7 as a mismatch.
 
 ## Sign-in is provisional
 
