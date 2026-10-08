@@ -5,7 +5,7 @@
   "packageManager": "pnpm@12.4.2",
   "scripts": {
     "typecheck": "pnpm -r --if-present typecheck && tsc --noEmit -p convex",
-    "lint": "eslint .",
+    "lint": "oxlint",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm test"
   },
@@ -13,16 +13,15 @@
     "@auth/core": "0.41.1",
     "@convex-dev/auth": "^0.0.96",
     "@edge-runtime/vm": "^5.0.0",
-    "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.4",
     "convex": "^1.46.0",
     "convex-test": "^0.0.60",
-    "eslint": "^10.12.0",
     "fractional-indexing": "^4.0.0",
     "jose": "^6.2.12",
     "jsdom": "^30.1.2",
+    "oxfmt": "^0.72.0",
+    "oxlint": "^1.87.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.71.1",
     "vite": "^8.3.3",
     "vitest": "^5.0.3"
   }
