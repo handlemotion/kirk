@@ -18,4 +18,8 @@ export default tseslint.config(
     rules: { "@typescript-eslint/no-require-imports": "off" },
     languageOptions: { globals: { module: "writable", require: "readonly", __dirname: "readonly" } },
   },
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: { globals: { console: "readonly" } },
+  },
 );
