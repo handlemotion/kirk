@@ -96,7 +96,13 @@ For a quick look at the desktop UI in a browser, run `pnpm --filter @kirk/deskto
 pnpm check
 ```
 
-This runs typecheck, lint and tests. The tests cover the Convex functions (`convex-test` with vitest) and the reorder logic.
+This runs typecheck, lint and tests. Vitest has three projects:
+
+- `convex`: the Convex functions, with `convex-test`.
+- `shared`: the reorder logic, and the hooks in `packages/shared`. The hook tests use a real `ConvexReactClient` on a fake WebSocket (`src/fake-server.ts`), so the optimistic updates run as they do in the apps.
+- `desktop`: the desktop `TodoScreen`, with the shared hooks mocked. Runs in jsdom.
+
+The iOS screen has no component tests.
 
 ## Sign-in is provisional
 
