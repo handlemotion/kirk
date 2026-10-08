@@ -108,7 +108,7 @@ The iOS screen has no component tests.
 ## End-to-end tests
 
 ```sh
-pnpm exec playwright install chromium   # once; --with-deps on a bare Linux box
+pnpm --filter @kirk/e2e exec playwright install chromium   # once; add --with-deps on a bare Linux box
 pnpm e2e
 ```
 
