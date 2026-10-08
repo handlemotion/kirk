@@ -167,6 +167,20 @@ Run these on iOS, macOS and Windows.
 
 The desktop checks matter most. Sign-in inside a Tauri web view has not been tested yet. The password method makes no redirect, so it should be safe. If a redirect-based method replaces it, test that flow on both desktop systems first.
 
+### E. iOS drag to reorder
+
+The gesture has not been run on a device or simulator. This test is the first check.
+
+1. Add five todos. Tap Reorder. A ☰ handle shows on each row, and tap-to-edit is off.
+2. Touch and hold a handle, then drag the row to a new place. Pass: other rows slide out of the way. On release the row stays put.
+3. Pass: a second device shows the new order within 500 ms. The dragged row does not jump back and forth on the first device.
+4. Drag a row to the top, to the bottom, and to its own place. Pass: each ends right. Dropping in place changes nothing.
+5. Add 20 todos. Drag a row to the edge of the screen. Pass: the list scrolls on its own.
+6. Scroll the list with a finger when Reorder is on. Pass: it scrolls and no row lifts.
+7. Turn on airplane mode. Pass: handles are dimmed and a hold on a handle lifts nothing.
+8. Turn on VoiceOver. Focus a handle and open the actions rotor. Pass: Move up and Move down work, and the list matches on the second device.
+9. Tap Done. Pass: handles are gone and tap-to-edit works again.
+
 ## Ship steps
 
 Do not run these until the manual tests pass. They need your accounts and certificates.
@@ -232,6 +246,5 @@ The installers are under `apps/desktop/src-tauri/target/release/bundle/`. Check 
 
 - No offline editing, multiple lists, sharing, tags or due dates.
 - No push notifications or background refresh.
-- The iOS app reorders with up and down buttons. Drag handles are not in v1.
 - The desktop app icon is a placeholder. Replace `apps/desktop/src-tauri/icons` with `pnpm --filter @kirk/desktop tauri icon <png>`.
 - `Cargo.lock` is not committed. The first `tauri dev` creates it. Commit it then.
