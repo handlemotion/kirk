@@ -106,7 +106,9 @@ describe("TodoScreen offline", () => {
   it("disables the add box and button", () => {
     render(<TodoScreen />);
     const box = screen.getByPlaceholderText("Add a todo") as HTMLInputElement;
-    const add = screen.getByRole("button", { name: "Add" }) as HTMLButtonElement;
+    const add = screen.getByRole("button", {
+      name: "Add",
+    }) as HTMLButtonElement;
     expect(box.disabled).toBe(true);
     expect(add.disabled).toBe(true);
   });
@@ -289,7 +291,9 @@ describe("TodoScreen move and delete", () => {
   it("moves with the buttons", async () => {
     const user = userEvent.setup();
     render(<TodoScreen />);
-    await user.click(within(row("todo 2")).getByRole("button", { name: "Move up" }));
+    await user.click(
+      within(row("todo 2")).getByRole("button", { name: "Move up" }),
+    );
     expect(state.actions.move).toHaveBeenLastCalledWith("t2", 0);
     await user.click(
       within(row("todo 2")).getByRole("button", { name: "Move down" }),
@@ -312,7 +316,9 @@ describe("TodoScreen move and delete", () => {
   it("deletes", async () => {
     const user = userEvent.setup();
     render(<TodoScreen />);
-    await user.click(within(row("todo 2")).getByRole("button", { name: "Delete" }));
+    await user.click(
+      within(row("todo 2")).getByRole("button", { name: "Delete" }),
+    );
     expect(state.actions.remove).toHaveBeenCalledExactlyOnceWith("t2");
   });
 });
