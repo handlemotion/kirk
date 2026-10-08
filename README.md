@@ -145,6 +145,12 @@ What it cannot cover. These stay manual tests:
 - The hosted Convex deployment and its production auth keys.
 - Native drag and drop on desktop. The tests use the move buttons.
 
+## TypeScript 7
+
+The repo uses TypeScript 7, the native compiler. `tsc` is a Go binary. The `typescript` package has no compiler API in 7.0, so a tool that imports `typescript` at runtime cannot use it. Nothing in Kirk does. If you add such a tool, such as typescript-eslint, alias a 6.x copy for it. See https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/.
+
+Expo SDK 57 lists TypeScript 6 as its expected version. `apps/ios/package.json` sets `expo.install.exclude` so Expo does not flag TypeScript 7 as a mismatch.
+
 ## Sign-in is provisional
 
 The sign-in method is not decided. v1 uses the Convex Auth Password provider because it needs no external service.
