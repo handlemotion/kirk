@@ -10,12 +10,14 @@
     "format:check": "oxfmt --check",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "e2e": "playwright test"
   },
   "devDependencies": {
     "@auth/core": "0.41.1",
     "@convex-dev/auth": "^0.0.96",
     "@edge-runtime/vm": "^5.0.0",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.4",
     "@vitest/coverage-v8": "^5.0.3",
     "convex": "^1.46.0",
