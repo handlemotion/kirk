@@ -12,7 +12,11 @@ export function tempId(): TodoId {
   return `optimistic-${tempCounter}` as TodoId;
 }
 
-export function withAdded(todos: readonly Todo[], title: string, id = tempId()) {
+export function withAdded(
+  todos: readonly Todo[],
+  title: string,
+  id = tempId(),
+) {
   const temp: Todo = {
     _id: id,
     _creationTime: Date.now(),

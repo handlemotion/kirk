@@ -38,7 +38,13 @@ export function TodoScreen() {
     setEditingId(null);
     const title = editText.trim();
     const original = latest.current.find((t) => t._id === id);
-    if (save && online && title !== "" && original && title !== original.title) {
+    if (
+      save &&
+      online &&
+      title !== "" &&
+      original &&
+      title !== original.title
+    ) {
       void actions.rename(id, title);
     }
   };
@@ -111,7 +117,9 @@ export function TodoScreen() {
                 checked={todo.done}
                 disabled={!online}
                 aria-label={`Done: ${todo.title}`}
-                onChange={(e) => void actions.setDone(todo._id, e.target.checked)}
+                onChange={(e) =>
+                  void actions.setDone(todo._id, e.target.checked)
+                }
               />
               {editingId === todo._id ? (
                 <input
@@ -164,7 +172,9 @@ export function TodoScreen() {
           ))}
         </ul>
       )}
-      <p className="hint muted">Double-click a todo to rename it. Drag to reorder.</p>
+      <p className="hint muted">
+        Double-click a todo to rename it. Drag to reorder.
+      </p>
     </main>
   );
 }

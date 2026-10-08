@@ -1,0 +1,52 @@
+version: 2
+
+# Dependabot over Renovate: it is built into GitHub, needs no app install and
+# no token, and it covers all three ecosystems here.
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Expo pins matching versions of these. Update them together, with
+      # `npx expo install --fix`.
+      expo:
+        patterns: ["expo", "expo-*", "react-native", "react-native-*"]
+      tauri:
+        patterns: ["@tauri-apps/*"]
+      oxc:
+        patterns: ["oxlint", "oxfmt"]
+      vitest:
+        patterns: ["vitest", "@vitest/*"]
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # React is pinned by overrides in pnpm-workspace.yaml.
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "@types/react"
+      - dependency-name: "@types/react-dom"
+
+  - package-ecosystem: cargo
+    directory: /apps/desktop/src-tauri
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      tauri:
+        patterns: ["tauri", "tauri-*"]
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/setup
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]

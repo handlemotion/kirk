@@ -1,0 +1,76 @@
+name: Desktop build
+
+# Builds the Tauri app, unsigned, on macOS, Windows and Linux. It is slow, so
+# it only runs when something it builds from changes. It is not part of the
+# CI gate. Do not make it a required check: a path-filtered workflow that does
+# not run leaves a required check pending.
+
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/**"
+      - "packages/shared/**"
+      - "convex/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".node-version"
+      - ".github/workflows/desktop-build.yml"
+      - ".github/actions/setup/**"
+  push:
+    branches: [main, feat/kirk-v1]
+    paths:
+      - "apps/desktop/**"
+      - "packages/shared/**"
+      - "convex/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".node-version"
+      - ".github/workflows/desktop-build.yml"
+      - ".github/actions/setup/**"
+
+concurrency:
+  group: desktop-build-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    env:
+      # Dummy value. The build only needs it to be present.
+      VITE_CONVEX_URL: https://example.convex.cloud
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      # Package list from https://tauri.app/start/prerequisites/#linux
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Build (unsigned)
+        run: pnpm --filter @kirk/desktop tauri build

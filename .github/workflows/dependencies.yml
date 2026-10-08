@@ -1,0 +1,83 @@
+name: Dependencies
+
+# Reports only. Nothing here is part of the CI gate.
+
+on:
+  pull_request:
+    paths:
+      - "package.json"
+      - "**/package.json"
+      - "pnpm-lock.yaml"
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - ".github/workflows/**"
+      - ".github/actions/**"
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: dependencies-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # Fails a pull request that adds a dependency with a known high severity
+  # advisory. It needs the dependency graph (Settings, Advanced Security). The
+  # first step probes for it. When the graph is off, the job warns and skips
+  # the review instead of failing every pull request.
+  review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check that the dependency graph is on
+        id: graph
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/dependency-graph/sbom" >/dev/null 2>&1; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::The dependency graph is off, so dependency review was skipped. Turn it on in the repository settings."
+          fi
+      - if: steps.graph.outputs.enabled == 'true'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+
+  # Never fails the run. It writes the report to the job summary and adds a
+  # warning when it finds anything. pnpm audit reads the lockfile, so it needs
+  # no install.
+  audit:
+    name: pnpm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          install: "false"
+      - name: Audit
+        run: |
+          status=0
+          pnpm audit > audit.txt 2>&1 || status=$?
+          {
+            echo "## pnpm audit"
+            echo
+            echo '```'
+            cat audit.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::pnpm audit exited with $status. See the job summary."
+          fi

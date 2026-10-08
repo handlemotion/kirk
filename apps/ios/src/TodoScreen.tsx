@@ -3,18 +3,22 @@ import {
   useTodoActions,
   useTodos,
   type Todo,
+  type TodoActions,
   type TodoId,
 } from "@kirk/shared";
 import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import ReorderableList, {
+  useReorderableDrag,
+  type ReorderableListReorderEvent,
+} from "react-native-reorderable-list";
 import { useSignOut } from "./auth";
 
 export function TodoScreen() {
@@ -47,6 +51,17 @@ export function TodoScreen() {
       void actions.rename(editingId, title);
     }
     setEditingId(null);
+  };
+
+  // The drop index is where the todo sits after the move. That is what move takes.
+  const onMove = (id: TodoId, toIndex: number) => {
+    if (!online) return;
+    void actions.move(id, toIndex);
+  };
+
+  const onReorder = ({ from, to }: ReorderableListReorderEvent) => {
+    const todo = latest.current[from];
+    if (todo) onMove(todo._id, to);
   };
 
   return (
@@ -90,88 +105,137 @@ export function TodoScreen() {
       {todos === undefined ? (
         <ActivityIndicator style={styles.loading} />
       ) : (
-        <FlatList
+        <ReorderableList
           data={todos}
           keyExtractor={(t) => t._id}
+          dragEnabled={online && reordering}
+          onReorder={onReorder}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={<Text style={styles.empty}>Nothing to do.</Text>}
           renderItem={({ item, index }) => (
-            <View style={styles.row}>
-              <Pressable
-                disabled={!online}
-                onPress={() => void actions.setDone(item._id, !item.done)}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: item.done, disabled: !online }}
-                style={styles.check}
-              >
-                <Text style={styles.checkText}>{item.done ? "☑" : "☐"}</Text>
-              </Pressable>
-              {editingId === item._id ? (
-                <TextInput
-                  style={[styles.input, styles.grow]}
-                  value={editText}
-                  autoFocus
-                  onChangeText={setEditText}
-                  onBlur={finishEdit}
-                  onSubmitEditing={finishEdit}
-                  returnKeyType="done"
-                />
-              ) : (
-                <Pressable
-                  style={styles.grow}
-                  disabled={!online}
-                  onPress={() => {
-                    setEditingId(item._id);
-                    setEditText(item.title);
-                  }}
-                >
-                  <Text style={[styles.rowTitle, item.done && styles.done]}>
-                    {item.title}
-                  </Text>
-                </Pressable>
-              )}
-              {reordering && (
-                <>
-                  <Pressable
-                    disabled={!online || index === 0}
-                    onPress={() => void actions.move(item._id, index - 1)}
-                    accessibilityLabel="Move up"
-                    style={styles.iconButton}
-                  >
-                    <Text style={index === 0 || !online ? styles.dim : undefined}>
-                      ▲
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    disabled={!online || index === todos.length - 1}
-                    onPress={() => void actions.move(item._id, index + 1)}
-                    accessibilityLabel="Move down"
-                    style={styles.iconButton}
-                  >
-                    <Text
-                      style={
-                        index === todos.length - 1 || !online
-                          ? styles.dim
-                          : undefined
-                      }
-                    >
-                      ▼
-                    </Text>
-                  </Pressable>
-                </>
-              )}
-              <Pressable
-                disabled={!online}
-                onPress={() => void actions.remove(item._id)}
-                accessibilityLabel="Delete"
-                style={styles.iconButton}
-              >
-                <Text style={[styles.delete, !online && styles.dim]}>✕</Text>
-              </Pressable>
-            </View>
+            <TodoRow
+              todo={item}
+              index={index}
+              count={todos.length}
+              online={online}
+              reordering={reordering}
+              editing={editingId === item._id}
+              editText={editText}
+              onEditText={setEditText}
+              onStartEdit={() => {
+                setEditingId(item._id);
+                setEditText(item.title);
+              }}
+              onFinishEdit={finishEdit}
+              actions={actions}
+              onMove={onMove}
+            />
           )}
         />
       )}
+    </View>
+  );
+}
+
+type RowProps = {
+  todo: Todo;
+  index: number;
+  count: number;
+  online: boolean;
+  reordering: boolean;
+  editing: boolean;
+  editText: string;
+  onEditText: (text: string) => void;
+  onStartEdit: () => void;
+  onFinishEdit: () => void;
+  actions: TodoActions;
+  onMove: (id: TodoId, toIndex: number) => void;
+};
+
+function TodoRow({
+  todo,
+  index,
+  count,
+  online,
+  reordering,
+  editing,
+  editText,
+  onEditText,
+  onStartEdit,
+  onFinishEdit,
+  actions,
+  onMove,
+}: RowProps) {
+  const drag = useReorderableDrag();
+
+  return (
+    <View style={styles.row}>
+      <Pressable
+        disabled={!online}
+        onPress={() => void actions.setDone(todo._id, !todo.done)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: todo.done, disabled: !online }}
+        style={styles.check}
+      >
+        <Text style={styles.checkText}>{todo.done ? "☑" : "☐"}</Text>
+      </Pressable>
+      {editing ? (
+        <TextInput
+          style={[styles.input, styles.grow]}
+          value={editText}
+          autoFocus
+          onChangeText={onEditText}
+          onBlur={onFinishEdit}
+          onSubmitEditing={onFinishEdit}
+          returnKeyType="done"
+        />
+      ) : (
+        <Pressable
+          style={styles.grow}
+          disabled={!online || reordering}
+          onPress={onStartEdit}
+        >
+          <Text style={[styles.rowTitle, todo.done && styles.done]}>
+            {todo.title}
+          </Text>
+        </Pressable>
+      )}
+      {reordering && (
+        <Pressable
+          disabled={!online}
+          onLongPress={drag}
+          delayLongPress={150}
+          accessibilityRole="adjustable"
+          accessibilityLabel={`Reorder ${todo.title}`}
+          accessibilityHint="Touch and hold, then drag. Or use the actions rotor."
+          accessibilityState={{ disabled: !online }}
+          accessibilityActions={[
+            { name: "moveUp", label: "Move up" },
+            { name: "moveDown", label: "Move down" },
+          ]}
+          onAccessibilityAction={(e) => {
+            if (e.nativeEvent.actionName === "moveUp" && index > 0) {
+              onMove(todo._id, index - 1);
+            } else if (
+              e.nativeEvent.actionName === "moveDown" &&
+              index < count - 1
+            ) {
+              onMove(todo._id, index + 1);
+            }
+          }}
+          style={styles.iconButton}
+        >
+          <Text style={[styles.handle, !online && styles.dim]}>☰</Text>
+        </Pressable>
+      )}
+      <Pressable
+        disabled={!online}
+        onPress={() => void actions.remove(todo._id)}
+        accessibilityLabel="Delete"
+        style={styles.iconButton}
+      >
+        <Text style={[styles.delete, !online && styles.dim]}>✕</Text>
+      </Pressable>
     </View>
   );
 }
@@ -221,6 +285,7 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 17 },
   done: { textDecorationLine: "line-through", color: "#888" },
   iconButton: { padding: 8 },
+  handle: { fontSize: 20, color: "#555" },
   delete: { color: "#c0392b", fontSize: 16 },
   dim: { opacity: 0.3 },
 });

@@ -12,6 +12,7 @@ v1 is online only. When the connection drops, the apps show a banner and block e
 | `packages/shared/` | Convex hooks, types, optimistic list updates and reorder logic. |
 | `apps/ios/` | Expo (React Native) iOS app. |
 | `apps/desktop/` | Tauri 2 app for macOS and Windows. React and Vite UI. |
+| `apps/e2e/` | Playwright end-to-end tests. Run the desktop UI against a local Convex backend. |
 | `scripts/generate-keys.mjs` | Prints the two keys Convex Auth needs. |
 
 Both apps import `@kirk/shared`. Each app keeps all sign-in code in one file: `src/auth.tsx`.
@@ -96,7 +97,59 @@ For a quick look at the desktop UI in a browser, run `pnpm --filter @kirk/deskto
 pnpm check
 ```
 
-This runs typecheck, lint and tests. The tests cover the Convex functions (`convex-test` with vitest) and the reorder logic.
+This runs typecheck, lint (oxlint), a format check (oxfmt) and tests. Run `pnpm format` to fix formatting. Vitest has three projects:
+
+- `convex`: the Convex functions, with `convex-test`.
+- `shared`: the reorder logic, and the hooks in `packages/shared`. The hook tests use a real `ConvexReactClient` on a fake WebSocket (`src/fake-server.ts`), so the optimistic updates run as they do in the apps.
+- `desktop`: the desktop `TodoScreen`, with the shared hooks mocked. Runs in jsdom.
+
+The iOS screen has no component tests.
+
+## End-to-end tests
+
+```sh
+pnpm --filter @kirk/e2e exec playwright install chromium   # once; add --with-deps on a bare Linux box
+pnpm e2e
+```
+
+`pnpm e2e` is not part of `pnpm check`. It takes about 10 seconds.
+
+It needs no Convex account and no secrets. One run does this:
+
+1. Starts `convex dev` in anonymous agent mode (`CONVEX_AGENT_MODE=anonymous`). That downloads the open-source backend binary on first use, into `~/.cache/convex`, and runs a fresh local backend. Convex marks this mode as beta.
+2. Sets fresh `JWT_PRIVATE_KEY` and `JWKS` values on it.
+3. Serves `apps/desktop` with Vite, pointed at that backend, on port 5199. Set `E2E_PORT` to change it.
+4. Runs the tests in Chromium, then stops both servers.
+
+The backend state and `.env.local` live in `apps/e2e/.backend`, which is git-ignored. A real `.env.local` elsewhere in the repo is never read or written. The backend binary needs a recent Linux (glibc 2.39 or later, so Ubuntu 24.04 or newer). The runner uses POSIX process groups, so it does not run on Windows. macOS is untested.
+
+The HTML report goes to `apps/e2e/playwright-report`. Traces and failure artifacts go to `apps/e2e/test-results`. Traces are kept for failed tests only. Open one with `pnpm --filter @kirk/e2e exec playwright show-trace <trace.zip>`.
+
+What it covers, against the real Convex client, auth and realtime sync:
+
+- `auth.spec.ts`: sign up, reload and stay signed in, sign out, wrong password error, sign in again.
+- `sync.spec.ts`: add, check, uncheck, rename, move and delete in one tab show in a second tab on the same account, in the same order. The observed latency is logged and added to the report as an annotation. It is never asserted.
+- `isolation.spec.ts`: two accounts do not see each other's todos.
+- `offline.spec.ts`: a tab that loses its connection shows the banner and disables every edit control. It catches up when the connection returns.
+- `concurrent.spec.ts`: two tabs check, rename and add at the same moment. Both end on the same list.
+
+Each test signs up its own account with a unique email, so tests run in parallel and reruns do not collide.
+
+How the offline test cuts the connection: Chromium keeps an open WebSocket after `context.setOffline(true)`. The Convex socket therefore goes through a Playwright WebSocket route that forwards to the real backend. Going offline closes both sides of that route and calls `setOffline` so that retries fail. Going online lets the client reconnect to the real backend.
+
+What it cannot cover. These stay manual tests:
+
+- The Tauri web view (WebView2 and WKWebView). The tests run in Chromium. Manual test D covers the web view.
+- The iOS app, including drag to reorder (manual tests B, C, D and E).
+- Real two-device latency over a real network (manual test A). The tests run both tabs on one machine against a local backend.
+- The hosted Convex deployment and its production auth keys.
+- Native drag and drop on desktop. The tests use the move buttons.
+
+## TypeScript 7
+
+The repo uses TypeScript 7, the native compiler. `tsc` is a Go binary. The `typescript` package has no compiler API in 7.0, so a tool that imports `typescript` at runtime cannot use it. Nothing in Kirk does. If you add such a tool, such as typescript-eslint, alias a 6.x copy for it. See https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/.
+
+Expo SDK 57 lists TypeScript 6 as its expected version. `apps/ios/package.json` sets `expo.install.exclude` so Expo does not flag TypeScript 7 as a mismatch.
 
 ## Sign-in is provisional
 
@@ -109,6 +162,49 @@ The sign-in method is not decided. v1 uses the Convex Auth Password provider bec
 Convex Auth is in beta. Check its docs before you upgrade: https://labs.convex.dev/auth.
 
 There is no password reset or email verification in v1. Those need an email provider.
+
+## Known web view notes
+
+These come from the Tauri docs. None of it has been run in a real Tauri window yet. Manual test D covers it.
+
+- **Token storage.** The desktop app keeps the Convex Auth tokens in `localStorage` (`apps/desktop/src/auth.tsx`). The web view is WebView2 on Windows and WKWebView on macOS. https://v2.tauri.app/reference/webview-versions/
+- **Origin.** The app loads from `tauri://localhost` on macOS and Linux. On Windows it loads from `http://tauri.localhost`. `localStorage` belongs to the origin, so a change of origin loses the signed-in session. https://v2.tauri.app/reference/config/ (see `useHttpsScheme`)
+- **Pin the Windows origin before the first release.** The window option `useHttpsScheme` is `false` by default. Docs: "Changing this value between releases will change the IndexedDB, cookies and localstorage location". Tauri 1 used `https://tauri.localhost`. Tauri 2 resets storage on that move: https://v2.tauri.app/start/migrate/from-tauri-1/. Kirk does not set the option. Choose a value now and never flip it after users sign in. The `https` origin also blocks mixed content, which does not matter here because Convex uses `https` and `wss`.
+- **CSP.** Tauri adds nonces and hashes to local scripts and styles at build time, and only when a policy is set in `tauri.conf.json`. https://v2.tauri.app/security/csp/. Kirk's policy allows `https://*.convex.cloud` and `wss://*.convex.cloud` in `connect-src`. `ipc:` and `http://ipc.localhost` are Tauri's own IPC channels.
+- **Custom Convex domain.** A domain outside `*.convex.cloud` is blocked by `connect-src`. Add both its `https://` and `wss://` forms. The same goes for the Convex HTTP actions host if you add one.
+- **Redirect sign-in.** OAuth and magic links return to the app through a URL. That needs a deep link or a local server inside Tauri. It is not tested. Password sign-in avoids the problem.
+
+## CI
+
+Workflows are in `.github/workflows`. They use no secrets, deploy nothing and sign nothing. A change that only touches docs runs no jobs. A change that only touches `apps/ios` skips the tests, the E2E job and the desktop UI build.
+
+**Require one check in branch protection: `CI gate`.** It always runs. It passes when every job that ran passed and fails if any failed or was cancelled. Jobs that were skipped by change detection count as passed. Do not require the other names. A skipped job or a path-filtered workflow would leave a required check pending.
+
+`ci.yml` runs on pull requests and on pushes to `main` and `feat/kirk-v1`:
+
+| Job | What it checks |
+| --- | --- |
+| `Changes` | Reads the changed files and decides which jobs run. |
+| `Check` | `pnpm install --frozen-lockfile` (fails on lockfile drift), oxlint, oxfmt, the Convex `_generated` check and typecheck. |
+| `Test` | Vitest with coverage for the `convex`, `shared` and `desktop` projects. Writes a table to the job summary. Thresholds are in `vitest.config.ts`. |
+| `Bundle` | `vite build` for the desktop UI and `expo export` for the iOS JavaScript. No native build. |
+| `E2E` | `pnpm e2e` with Playwright. Skipped until `package.json` has an `e2e` script. Uploads the report and traces when it fails. |
+| `CI gate` | The summary job described above. |
+
+Other workflows. None of them is part of the gate:
+
+| Workflow | What it does |
+| --- | --- |
+| `desktop-build.yml` | Unsigned Tauri build on macOS, Windows and Linux. Runs only when `apps/desktop`, `packages/shared`, `convex` or the root package files change. Slow, so it is not part of the gate. |
+| `codeql.yml` | CodeQL for JavaScript and TypeScript. Turn off "code scanning default setup" in the repository settings, or the upload is rejected. |
+| `dependencies.yml` | Dependency review on pull requests (fails on a high severity advisory) and a non-blocking `pnpm audit` report, also weekly. |
+| `dependabot.yml` | Weekly updates for npm, Cargo and GitHub Actions. |
+
+The Node version is in `.node-version`. The pnpm version is `packageManager` in `package.json`. Both are read by `.github/actions/setup`.
+
+`npx convex codegen` needs a Convex login, so CI cannot run it. `.github/scripts/check-convex-generated.mjs` checks `convex/_generated` offline instead. It compares the module list in `api.d.ts` with the files in `convex/`, and compares `api.*` and `server.*` with the templates in the installed `convex` package. It cannot check `dataModel.d.ts`.
+
+Run the same checks locally with `pnpm check` and `pnpm test:coverage`.
 
 ## Offline behavior
 
@@ -166,6 +262,20 @@ Run these on iOS, macOS and Windows.
 5. Sign in as a second account. Pass: it sees none of the first account's todos.
 
 The desktop checks matter most. Sign-in inside a Tauri web view has not been tested yet. The password method makes no redirect, so it should be safe. If a redirect-based method replaces it, test that flow on both desktop systems first.
+
+### E. iOS drag to reorder
+
+The gesture has not been run on a device or simulator. This test is the first check.
+
+1. Add five todos. Tap Reorder. A ☰ handle shows on each row, and tap-to-edit is off.
+2. Touch and hold a handle, then drag the row to a new place. Pass: other rows slide out of the way. On release the row stays put.
+3. Pass: a second device shows the new order within 500 ms. The dragged row does not jump back and forth on the first device.
+4. Drag a row to the top, to the bottom, and to its own place. Pass: each ends right. Dropping in place changes nothing.
+5. Add 20 todos. Drag a row to the edge of the screen. Pass: the list scrolls on its own.
+6. Scroll the list with a finger when Reorder is on. Pass: it scrolls and no row lifts.
+7. Turn on airplane mode. Pass: handles are dimmed and a hold on a handle lifts nothing.
+8. Turn on VoiceOver. Focus a handle and open the actions rotor. Pass: Move up and Move down work, and the list matches on the second device.
+9. Tap Done. Pass: handles are gone and tap-to-edit works again.
 
 ## Ship steps
 
@@ -232,6 +342,5 @@ The installers are under `apps/desktop/src-tauri/target/release/bundle/`. Check 
 
 - No offline editing, multiple lists, sharing, tags or due dates.
 - No push notifications or background refresh.
-- The iOS app reorders with up and down buttons. Drag handles are not in v1.
 - The desktop app icon is a placeholder. Replace `apps/desktop/src-tauri/icons` with `pnpm --filter @kirk/desktop tauri icon <png>`.
 - `Cargo.lock` is not committed. The first `tauri dev` creates it. Commit it then.
