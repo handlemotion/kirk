@@ -127,9 +127,37 @@ These come from the Tauri docs. None of it has been run in a real Tauri window y
 - **Custom Convex domain.** A domain outside `*.convex.cloud` is blocked by `connect-src`. Add both its `https://` and `wss://` forms. The same goes for the Convex HTTP actions host if you add one.
 - **Redirect sign-in.** OAuth and magic links return to the app through a URL. That needs a deep link or a local server inside Tauri. It is not tested. Password sign-in avoids the problem.
 
-## Desktop CI
+## CI
 
-`.github/workflows/desktop-build.yml` builds the desktop app, unsigned, on macOS, Windows and Linux. It runs on pull requests and pushes that touch `apps/desktop`, `packages/shared` or `convex`. It uses a dummy `VITE_CONVEX_URL`, has no signing steps and does not publish anything.
+Workflows are in `.github/workflows`. They use no secrets, deploy nothing and sign nothing. A change that only touches docs runs no jobs. A change that only touches `apps/ios` skips the tests, the E2E job and the desktop UI build.
+
+**Require one check in branch protection: `CI gate`.** It always runs. It passes when every job that ran passed and fails if any failed or was cancelled. Jobs that were skipped by change detection count as passed. Do not require the other names. A skipped job or a path-filtered workflow would leave a required check pending.
+
+`ci.yml` runs on pull requests and on pushes to `main` and `feat/kirk-v1`:
+
+| Job | What it checks |
+| --- | --- |
+| `Changes` | Reads the changed files and decides which jobs run. |
+| `Check` | `pnpm install --frozen-lockfile` (fails on lockfile drift), oxlint, oxfmt, the Convex `_generated` check and typecheck. |
+| `Test` | Vitest with coverage for the `convex`, `shared` and `desktop` projects. Writes a table to the job summary. Thresholds are in `vitest.config.ts`. |
+| `Bundle` | `vite build` for the desktop UI and `expo export` for the iOS JavaScript. No native build. |
+| `E2E` | `pnpm e2e` with Playwright. Skipped until `package.json` has an `e2e` script. Uploads the report and traces when it fails. |
+| `CI gate` | The summary job described above. |
+
+Other workflows. None of them is part of the gate:
+
+| Workflow | What it does |
+| --- | --- |
+| `desktop-build.yml` | Unsigned Tauri build on macOS, Windows and Linux. Runs only when `apps/desktop`, `packages/shared`, `convex` or the root package files change. Slow, so it is not part of the gate. |
+| `codeql.yml` | CodeQL for JavaScript and TypeScript. Turn off "code scanning default setup" in the repository settings, or the upload is rejected. |
+| `dependencies.yml` | Dependency review on pull requests (fails on a high severity advisory) and a non-blocking `pnpm audit` report, also weekly. |
+| `dependabot.yml` | Weekly updates for npm, Cargo and GitHub Actions. |
+
+The Node version is in `.node-version`. The pnpm version is `packageManager` in `package.json`. Both are read by `.github/actions/setup`.
+
+`npx convex codegen` needs a Convex login, so CI cannot run it. `.github/scripts/check-convex-generated.mjs` checks `convex/_generated` offline instead. It compares the module list in `api.d.ts` with the files in `convex/`, and compares `api.*` and `server.*` with the templates in the installed `convex` package. It cannot check `dataModel.d.ts`.
+
+Run the same checks locally with `pnpm check` and `pnpm test:coverage`.
 
 ## Offline behavior
 
