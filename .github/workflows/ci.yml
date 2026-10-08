@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, feat/kirk-v1]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # Decides which jobs a change needs. See .github/scripts/changes.sh.
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      check: ${{ steps.changes.outputs.check }}
+      test: ${{ steps.changes.outputs.test }}
+      bundle: ${{ steps.changes.outputs.bundle }}
+      e2e: ${{ steps.changes.outputs.e2e }}
+      e2e_script: ${{ steps.changes.outputs.e2e_script }}
+    steps:
+      # Two commits: the merge commit and its first parent, the base tip.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - id: changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: .github/scripts/changes.sh
+
+  # Typecheck, lint, format and the Convex _generated check. The install step
+  # fails when the lockfile has drifted. Each step takes seconds, so one job is
+  # faster than one job per step. Every extra job pays for its own install.
+  check:
+    name: Check
+    needs: changes
+    if: needs.changes.outputs.check == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Lint
+        run: pnpm lint --format=github
+      - name: Format
+        run: pnpm format:check
+      - name: Convex _generated is current
+        run: node .github/scripts/check-convex-generated.mjs
+      - name: Typecheck
+        run: pnpm typecheck
+
+  # Runs vitest once, with coverage. This replaces the plain test run in
+  # pnpm check. Thresholds are in vitest.config.ts.
+  test:
+    name: Test
+    needs: changes
+    if: needs.changes.outputs.test == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Test with coverage
+        run: pnpm test:coverage
+      - name: Coverage summary
+        if: ${{ !cancelled() && hashFiles('coverage/coverage-summary.json') != '' }}
+        run: node .github/scripts/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+
+  # Proves both apps still bundle. The iOS step is a Metro JS bundle only.
+  # It builds no native code and needs no Xcode.
+  bundle:
+    name: Bundle
+    needs: changes
+    if: needs.changes.outputs.bundle == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Build the desktop UI
+        working-directory: apps/desktop
+        env:
+          # Dummy value. The build only needs it to be present.
+          VITE_CONVEX_URL: https://example.convex.cloud
+        run: pnpm exec vite build
+      - name: Bundle the iOS JavaScript
+        working-directory: apps/ios
+        env:
+          EXPO_PUBLIC_CONVEX_URL: https://example.convex.cloud
+          CI: "1"
+        run: pnpm exec expo export --platform ios --output-dir "$RUNNER_TEMP/ios-export"
+
+  # Does nothing until package.json has an `e2e` script. Then it runs
+  # `pnpm e2e` with no edits. Playwright must resolve from the repo root.
+  # Set the repository variable E2E_BROWSERS to change the browser list.
+  e2e:
+    name: E2E
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true' && needs.changes.outputs.e2e_script == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      E2E_BROWSERS: ${{ vars.E2E_BROWSERS || 'chromium' }}
+      # Dummy value. Tests that need a backend set their own.
+      VITE_CONVEX_URL: https://example.convex.cloud
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ env.E2E_BROWSERS }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-${{ env.E2E_BROWSERS }}-
+      - name: Install browsers
+        run: |
+          read -ra browsers <<< "$E2E_BROWSERS"
+          pnpm exec playwright install --with-deps "${browsers[@]}"
+      - name: Run E2E tests
+        run: pnpm e2e
+      - name: Upload report and traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+            e2e/playwright-report/
+            e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # The one check to require in branch protection. It always runs. Jobs that
+  # change detection skipped count as passed. A failed or cancelled job fails
+  # the gate.
+  gate:
+    name: CI gate
+    if: ${{ always() }}
+    needs: [changes, check, test, bundle, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check results
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if [ "$(echo "$NEEDS" | jq -r '.changes.result')" != "success" ]; then
+            echo "::error::Change detection did not succeed."
+            exit 1
+          fi
+          if echo "$NEEDS" | jq -e 'to_entries | any(.value.result == "failure" or .value.result == "cancelled")' >/dev/null; then
+            echo "::error::A CI job failed or was cancelled."
+            exit 1
+          fi
