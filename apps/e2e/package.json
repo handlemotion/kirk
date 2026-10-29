@@ -8,11 +8,11 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
-    "@types/node": "^26.6.4",
-    "convex": "^1.46.0",
-    "jose": "^6.2.12",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "convex": "^1.48.0",
+    "jose": "^6.2.13",
     "typescript": "~7.0.2",
-    "vite": "^8.3.3"
+    "vite": "^8.3.5"
   }
 }
